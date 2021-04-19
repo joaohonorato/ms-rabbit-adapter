@@ -1,0 +1,177 @@
+server:
+  port: ${port:8084}
+
+spring:
+  application:
+    name: ${name:ebs-partners-purchase-order-adapter}
+  profiles:
+    active: ${profiles_active:local}
+  data:
+    mongodb:
+      uri: ${mongodb_uri:mongodb://root:password@localhost:27017/ebs-partners-purchase-order-adapter?authSource=admin&maxIdleTimeMS=1000000}
+  rabbitmq:
+    addresses: ${rabbit_addresses:localhost:5672}
+    username: ${rabbit_username:guest}
+    password: ${rabbit_password:guest}
+    virtual-host: ${rabbit_virtualhost:/}
+  cloud:
+    stream:
+      bindings:
+        subscribeExchangePartnersPurchaseOrderAvailable:
+          destination: x-partners-purchase-order-available
+          group: q-partners-purchase-order-adapter
+          consumer:
+            maxAttempts: 1
+
+        subscribeExchangePartnersPurchaseOrderAvailableWithWait:
+          destination: x-partners-purchase-order-available.wait
+          group: q-partners-purchase-order-adapter
+          consumer:
+            maxAttempts: 1
+
+        subscribeExchangeVMIStockAvailable:
+          destination: x-vmi-stock-available
+          group: q-vmi-stock-adapter
+          consumer:
+            maxAttempts: 1
+
+        subscribeExchangeVMIStockAvailableWithWait:
+          destination: x-vmi-stock-available.wait
+          group: q-vmi-stock-adapter
+          consumer:
+            maxAttempts: 1
+
+        publishOperationError:
+          destination:  x-partners-purchase-order-adapter-operation-error
+
+        publishVMIOperationError:
+          destination:  x-vmi-stock-adapter-operation-error
+
+        publishDataRequestedWithWait:
+          destination: x-partners-purchase-order-available.wait
+
+        publishVMIDataRequestedWithWait:
+          destination: x-vmi-stock-available.wait
+
+      rabbit:
+        bindings:
+          subscribeExchangePartnersPurchaseOrderAvailable:
+            consumer:
+              ttl: ${rabbitmq_ttlInMilliseconds:3600000}
+              autoBindDlq: true
+              republishToDlq: true
+              requeueRejected: false
+              deadLetterExchange: x-partners-purchase-order-available-error
+              deadLetterExchangeType: fanout
+              dlqExpires: ${rabbitmq_dlqExpires:1000}
+              exchangeType: fanout
+              prefetch: ${rabbitmq_prefetch:1}
+
+          subscribeExchangePartnersPurchaseOrderAvailableWithWait:
+            consumer:
+              ttl: ${rabbitmq_ttlInMilliseconds:3600000}
+              autoBindDlq: true
+              republishToDlq: true
+              requeueRejected: false
+              deadLetterExchange: x-partners-purchase-order-available-error
+              deadLetterExchangeType: fanout
+              dlqExpires: ${rabbitmq_dlqExpires:1000}
+              delayedExchange: true
+              prefetch: ${rabbitmq_prefetch:1}
+
+          subscribeExchangeVMIStockAvailableWithWait:
+            consumer:
+              ttl: ${rabbitmq_ttlInMilliseconds:3600000}
+              autoBindDlq: true
+              republishToDlq: true
+              requeueRejected: false
+              deadLetterExchange: x-vmi-stock-available-error
+              deadLetterExchangeType: fanout
+              dlqExpires: ${rabbitmq_dlqExpires:1000}
+              delayedExchange: true
+              prefetch: ${rabbitmq_prefetch:1}
+          subscribeExchangeVMIStockAvailable:
+            consumer:
+              ttl: ${rabbitmq_ttlInMilliseconds:3600000}
+              autoBindDlq: true
+              republishToDlq: true
+              requeueRejected: false
+              deadLetterExchange: x-vmi-stock-available-error
+              deadLetterExchangeType: fanout
+              dlqExpires: ${rabbitmq_dlqExpires:1000}
+              exchangeType: fanout
+              prefetch: ${rabbitmq_prefetch:1}
+
+          publishOperationError:
+            producer:
+              exchangeType: fanout
+
+          publishDataRequestedWithWait:
+            producer:
+              exchangeType: fanout
+              delayedExchange: true
+
+          publishVMIDataRequestedWithWait:
+            producer:
+              exchangeType: fanout
+              delayedExchange: true
+      binders:
+        rabbit_local:
+          type: rabbit
+          environment:
+            spring:
+              rabbitmq:
+                host: ${rabbit_host:localhost}
+                port: ${rabbit_port:5672}
+                username: ${rabbit_username:guest}
+                password: ${rabbit_password:guest}
+                virtual-host: /
+
+management:
+  endpoints:
+    web:
+      base-path: /
+      path-mapping:
+        health: healthcheck
+
+app:
+  email:
+    success: ${app_email_success:deivde.melo@portobello.com.br}
+    error: ${app_email_error:deivde.melo@portobello.com.br}
+  rabbitmq:
+    delayInMilliseconds: ${app_rabbitmq_delayInMilliseconds:900000} # 15 minutes
+    maximumNumberOfRetries: ${app_rabbitmq_maximumNumberOfRetries:3}
+  eventsHub:
+    baseUrl: ${app_eventsHub_baseUrl:https://event-receiver.sensedia.com/event-receiver/e16b5a90/partners-purchase-order/v1}
+    purchaseOrder: ${app_eventsHub_purchaseOrder:/PurchaseOrderInformationAvailableDEV}
+    gatewayClientId: ${app_partners_purchase_order_adapter_gateway_client_id:1974cf21-585c-3cf0-bc65-83601c676178}
+    gatewayClientSecret: ${app_partners_purchase_order_adapter_gateway_client_secret:ce5a68c5-567f-3181-890a-4144cbdae977}
+    gatewayOauthUrl: ${app_partners_purchase_order_adapter_gateway_oauth_url:https://api-portobello.sensedia.com}
+    gatewayOauthRedirectUrl: ${app_partners_purchase_order_adapter_gateway_oauth_redirect_url:http://localhost/}
+    gatewayGrantCodeUri: /oauth/grant-code
+    gatewayAccessTokenUri: /oauth/access-token
+  api:
+    stockEndpoint: ${app_estoque_gateway_ebs:/leroy/vmi/stockLevel}
+    stockLeroyEndpoint: ${app_estoque_status_gateway_ebs:/leroy/vmi/stockStatus}
+    baseUrl: https://api-portobello.sensedia.com/dev/purchase-orders/v1
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 60000
+        readTimeout: 60000
+        loggerLevel: full
+      EventsHubIntegration:
+        connectTimeout: 300000
+        readTimeout: 300000
+        loggerLevel: full
+      SensediaOrderIntegration:
+        connectTimeout: 300000
+        readTimeout: 300000
+        loggerLevel: full
+info:
+  build:
+    groupId: '@project.groupId@'
+    artifactId: '@project.artifactId@'
+    version: '@project.version@'
+    date: '@timestamp@'

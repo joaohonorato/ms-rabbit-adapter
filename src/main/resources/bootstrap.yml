@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: ${name:ebs-partners-purchase-order-adapter}
+  profiles:
+    active: ${profiles_active:local}
+
+logging:
+  level:
+    root: ${logging_level:INFO}
+  gelf:
+    host: ${logging_gelf_host:localhost}
+    port: ${logging_gelf_port:12201}
+    fields: ${logging_gelf_fields:traceId,spanId}
+    extractStackTrace: ${logging_gelf_extractStackTrace:true}
+    filterStackTrace: ${logging_gelf_filterStackTrace:true}
+    timestampPattern: ${logging_gelf_timestampPattern:yyyy-MM-dd HH:mm:ss.SSS}
